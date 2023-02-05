@@ -1,34 +1,13 @@
 import json
+import os.path
+import os
 
-settings_json = json.dumps([
-    {'type': 'title',
-     'title': 'Tuning Settings'},
-    {'type': 'numeric',
-     'title': 'Number of Strings',
-     'desc': 'Number of Strings',
-     'section': 'Tuning Settings',
-     'key': 'num_strings'},
-    {'type': 'options',
-     'title': 'Tuning',
-     'desc': 'Choose a preset tuning',
-     'section': 'Tuning Settings',
-     'key': 'tuning',
-     'options': ['Standard', 'Drop']},
-    {'type': 'options',
-     'title': 'Root Note',
-     'desc': 'Note of your lowest string',
-     'section': 'Tuning Settings',
-     'key': 'root_note',
-     'options': ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#']},
-    {'type': 'options',
-     'title': 'Root Note Octave',
-     'desc': 'Octave of your lowest string',
-     'section': 'Tuning Settings',
-     'key': 'root_note_octave',
-     'options': ['0', '1', '2']},
-    {'type': 'numeric',
-     'title': 'Pitch Standard',
-     'desc': 'Frequency of A4 in hz',
-     'section': 'Tuning Settings',
-     'key': 'pitch_standard'},
-])
+def get_settings():
+    settings_file_path = os.path.join(os.path.dirname(__file__), "settings.json")
+    settings_file = open(settings_file_path, "r")
+    data = json.load(settings_file)
+    return json.dumps(data)
+
+if __name__ == "__main__":
+    data = get_settings()
+    print(data)

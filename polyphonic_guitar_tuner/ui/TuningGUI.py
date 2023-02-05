@@ -7,7 +7,7 @@ from kivy.uix.settings import SettingsWithSidebar
 
 import os.path
 
-from settings_io.SettingsJson import settings_json
+import settings_io.SettingsJson as SettingsJson
 
 class TunerWindow(Screen):
     pass
@@ -29,19 +29,19 @@ class TuningGUI(App):
 
     def build_config(self, config):
         config.setdefaults('Tuning Settings', {
-            'num_strings': 7,
-            'tuning': 'Drop',
-            'root_note': 'A',
-            'root_note_octave': '1',
+            'num_strings': 6,
+            'tuning': 'Standard',
+            'root_note': 'E',
+            'root_note_octave': '2',
             'pitch_standard': 440})
         config_file = os.path.join("ui", "tuninggui.ini")
-        if os.path.isfile(config_file):
-            config.read(config_file)
+        config.read(config_file)
+        
 
     def build_settings(self, settings):
         settings.add_json_panel('Tuning Settings',
                                 self.config,
-                                data=settings_json)
+                                data=SettingsJson.get_settings())
 
     def on_config_change(self, config, section, key, value):
         print(section, key, value)
