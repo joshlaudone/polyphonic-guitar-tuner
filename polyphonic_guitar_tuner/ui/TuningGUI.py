@@ -1,9 +1,11 @@
 import kivy
 from kivy.app import App
+from kivy.config import ConfigParser
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.settings import SettingsWithSidebar
+
+import os.path
 
 from settings_io.SettingsJson import settings_json
 
@@ -16,7 +18,8 @@ class SettingsWindow(Screen):
 class WindowManager(ScreenManager):
     pass
 
-kv = Builder.load_file("Tuner.kv")
+kv_file = os.path.join("ui", "Tuner.kv")
+kv = Builder.load_file(kv_file)
 
 class TuningGUI(App):
     def build(self):
@@ -31,6 +34,9 @@ class TuningGUI(App):
             'root_note': 'A',
             'root_note_octave': '1',
             'pitch_standard': 440})
+        config_file = os.path.join("ui", "tuninggui.ini")
+        if os.path.isfile(config_file):
+            config.read(config_file)
 
     def build_settings(self, settings):
         settings.add_json_panel('Tuning Settings',
@@ -39,7 +45,3 @@ class TuningGUI(App):
 
     def on_config_change(self, config, section, key, value):
         print(section, key, value)
-
-if __name__ == "__main__":
-    gui = TuningGUI()
-    gui.run()
