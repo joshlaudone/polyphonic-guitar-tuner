@@ -1,0 +1,41 @@
+# Filename: my.kv
+
+WindowManager:
+    TunerWindow:
+    SettingsWindow:
+
+<TunerWindow>:
+    name: "Tuner"
+
+    FloatLayout:
+        Button:
+            id: btn
+            text: "Tune" if btn.state == "normal" else "Stop Tuning"
+            pos_hint: {"x":0.5, "top":1}
+            font_size: 40
+            color: 0.1,0.5,0.6,1
+            size_hint: 0.25,0.15
+
+        Button:
+            text: "Settings"
+            pos_hint: {"x":0.375, "y":0.1}
+            on_release: app.open_settings()
+            font_size: 40
+            color: 0.1,0.5,0.6,1
+            size_hint: 0.25,0.15
+
+
+<SettingsWindow>:
+    name: "Settings"
+
+    FloatLayout:
+        Button:
+            id: btn
+            text: "Tuning" if btn.state == "normal" else "Stop Tuning"
+            pos_hint: {"x":0.5, "top":1}
+
+        Button:
+            text: "Back"
+            on_release:
+                app.root.current = "Tuner"
+                root.manager.transition.direction = "down"
