@@ -5,7 +5,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.settings import SettingsWithSidebar
 
-from SettingsJson import settings_json
+from settings_io.SettingsJson import settings_json
 
 class TunerWindow(Screen):
     pass
