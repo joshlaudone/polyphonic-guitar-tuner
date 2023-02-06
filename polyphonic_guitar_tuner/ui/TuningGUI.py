@@ -12,9 +12,6 @@ import settings_io.SettingsJson as SettingsJson
 class TunerWindow(Screen):
     pass
 
-class SettingsWindow(Screen):
-    pass
-
 class WindowManager(ScreenManager):
     pass
 

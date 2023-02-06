@@ -2,40 +2,38 @@
 
 WindowManager:
     TunerWindow:
-    SettingsWindow:
 
 <TunerWindow>:
     name: "Tuner"
+    canvas:
+        Color:
+            rgba: 0.1,0.1,0.3,1
+        Rectangle:
+            pos: self.pos
+            size: self.size
 
     FloatLayout:
-        Button:
-            id: btn
-            text: "Tune" if btn.state == "normal" else "Stop Tuning"
-            pos_hint: {"x":0.5, "top":1}
-            font_size: 40
+        BoxLayout:
+            canvas:
+                Color:
+                    rgba: 0.5,0.5,0.5,1
+                Line:
+                    rounded_rectangle: self.x, self.y, self.width, self.height, 10
+                    width: 2
+            id: tuning_canvas
+            pos_hint: {"x":0.1, "top":0.9}
             color: 0.1,0.5,0.6,1
-            size_hint: 0.25,0.15
+            size_hint: 0.8,0.7
 
         Button:
             text: "Settings"
-            pos_hint: {"x":0.375, "y":0.1}
+            pos_hint: {"x":0.4, "y":0.05}
             on_release: app.open_settings()
-            font_size: 40
-            color: 0.1,0.5,0.6,1
-            size_hint: 0.25,0.15
+            font_size: 30
+            color: 1,1,1,1
+            size_hint: 0.2,0.1
 
-
-<SettingsWindow>:
-    name: "Settings"
-
-    FloatLayout:
-        Button:
-            id: btn
-            text: "Tuning" if btn.state == "normal" else "Stop Tuning"
-            pos_hint: {"x":0.5, "top":1}
-
-        Button:
-            text: "Back"
-            on_release:
-                app.root.current = "Tuner"
-                root.manager.transition.direction = "down"
+        Label:
+            text: "Polyphonic Guitar Tuner"
+            pos_hint: {"x":0.4, "y":0.925}
+            size_hint: 0.2, 0.05
