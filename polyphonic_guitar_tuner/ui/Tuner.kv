@@ -1,34 +1,54 @@
 # Filename: my.kv
 
 <VerticalTuner>:
-    circle_radius: self.width/2 if self.width/2 < self.height/12 else self.height/12
+    circle_radius: self.width/2 if self.width/2 < self.height/16 else self.height/16
     circle_thickness: 4
     inner_circle_radius: self.circle_radius - self.circle_thickness
+    tuner_color: (0.9, 0.9, 0.9, 1)
     cent_difference: 0
     cent_threshold: 5
-    canvas:
-        # Vertical line
-        Color:
-            rgba: 0.9, 0.9, 0.9, 1
-        Line:
-            points: self.center_x, self.y, self.center_x, self.y + self.height
-            width: self.circle_thickness/2
-        # In-tune circle
-        Ellipse:
-            pos: self.center_x - self.circle_radius, self.center_y - self.circle_radius
-            size: 2*self.circle_radius, 2*self.circle_radius
-        # Empty center of in-tune circle
-        Color:
-            rgba: app.theme_cls.bg_normal
-        Ellipse:
-            pos: self.center_x - self.inner_circle_radius, self.center_y - self.inner_circle_radius
-            size: 2*self.inner_circle_radius, 2*self.inner_circle_radius
-        # Circle for how in/out of tune the input is
-        Color:
-            rgba: app.theme_cls.accent_color if abs(self.cent_difference) > self.cent_threshold else app.theme_cls.primary_color
-        Ellipse:
-            pos: self.center_x - self.inner_circle_radius, self.center_y - self.inner_circle_radius + (self.height/2) * (self.cent_difference / 100)
-            size: 2*self.inner_circle_radius, 2*self.inner_circle_radius
+    note_name: "A#2"
+    MDLabel:
+        text: root.note_name
+        bold: True
+        font_size: min(self.width/2, self.height/1.8)
+        pos: (root.x, root.y + root.height * 6/7)
+        size: root.width, root.height * (1/7)
+        halign: "center"
+    BoxLayout:
+        pos: (root.x, root.y + root.height * 1/7)
+        size: root.width, root.height * (5/7)
+        canvas:
+            # Vertical line
+            Color:
+                rgba: root.tuner_color
+            Line:
+                points: self.center_x, self.y, self.center_x, self.y + self.height
+                width: root.circle_thickness/2
+            # In-tune circle
+            Ellipse:
+                pos: self.center_x - root.circle_radius, self.center_y - root.circle_radius
+                size: 2*root.circle_radius, 2*root.circle_radius
+            # Empty center of in-tune circle
+            Color:
+                rgba: app.theme_cls.bg_normal
+            Ellipse:
+                pos: self.center_x - root.inner_circle_radius, self.center_y - root.inner_circle_radius
+                size: 2*root.inner_circle_radius, 2*root.inner_circle_radius
+            # Circle for how in/out of tune the input is
+            Color:
+                rgba: app.theme_cls.accent_color if abs(root.cent_difference) > root.cent_threshold else app.theme_cls.primary_color
+            Ellipse:
+                pos: self.center_x - root.inner_circle_radius, self.center_y - root.inner_circle_radius + (self.height/2) * (root.cent_difference / 100)
+                size: 2*root.inner_circle_radius, 2*root.inner_circle_radius
+    MDLabel:
+        text: "+" + str(root.cent_difference)
+        bold: True
+        pos: (root.x, root.y)
+        size: root.width, root.height * (1/7)
+        font_size: min(self.width/2, self.height/1.8)
+        halign: "center"
+
 
 WindowManager:
     TunerWindow:
@@ -50,15 +70,7 @@ WindowManager:
 
         VerticalTuner:
             pos_hint: {"center_x":0.5, "center_y":0.5}
-            size_hint: 0.07, 0.5
-
-        MDLabel:
-            text: "A#2"
-            bold: True
-            font_size: min(self.width/2, self.height/1.8)
-            pos_hint: {"center_x":0.5, "center_y":0.8}
-            size_hint: 0.07, 0.1
-            halign: "center"
+            size_hint: 0.07, 0.7
 
         MDIconButton:
             icon: "cog"

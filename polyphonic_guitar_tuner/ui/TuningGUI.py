@@ -2,7 +2,7 @@ from kivymd.app import MDApp
 from kivymd.uix.widget import MDWidget
 from kivy.config import ConfigParser
 from kivy.lang import Builder
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, BoundedNumericProperty, ColorProperty, StringProperty
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.settings import SettingsWithSidebar
 
@@ -14,8 +14,11 @@ class VerticalTuner(MDWidget):
     circle_radius = NumericProperty(20)
     circle_thickness = NumericProperty(20)
     inner_circle_radius = NumericProperty(16)
-    cent_difference = NumericProperty(0)
+    tuner_color = ColorProperty([0.9, 0.9, 0.9, 1])
+    cent_difference = BoundedNumericProperty(0, min=-100, max=100, 
+                        errorhandler=lambda x: 100 if x > 100 else -100)
     cent_threshold = NumericProperty(5)
+    note_name = StringProperty("E2")
 
 class TunerWindow(Screen):
     pass
