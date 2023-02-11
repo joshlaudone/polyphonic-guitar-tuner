@@ -1,44 +1,67 @@
 # Filename: my.kv
 
+<VerticalTuner>:
+    circle_radius: self.width/2 if self.width/2 < self.height/12 else self.height/12
+    circle_thickness: 4
+    inner_circle_radius: self.circle_radius - self.circle_thickness
+    cent_difference: 0
+    cent_threshold: 5
+    canvas:
+        # Vertical line
+        Color:
+            rgba: 0.5, 0.5, 0.5, 1
+        Line:
+            points: self.center_x, self.y, self.center_x, self.y + self.height
+            width: self.circle_thickness/2
+        # In-tune circle
+        Ellipse:
+            pos: self.center_x - self.circle_radius, self.center_y - self.circle_radius
+            size: 2*self.circle_radius, 2*self.circle_radius
+        # Empty center of in-tune circle
+        Color:
+            rgba: app.theme_cls.bg_normal
+        Ellipse:
+            pos: self.center_x - self.inner_circle_radius, self.center_y - self.inner_circle_radius
+            size: 2*self.inner_circle_radius, 2*self.inner_circle_radius
+        # Circle for how in/out of tune the input is
+        Color:
+            rgba: app.theme_cls.accent_color if abs(self.cent_difference) > self.cent_threshold else app.theme_cls.primary_color
+        Ellipse:
+            pos: self.center_x - self.inner_circle_radius, self.center_y - self.inner_circle_radius + (self.height/2) * (self.cent_difference / 100)
+            size: 2*self.inner_circle_radius, 2*self.inner_circle_radius
+
 WindowManager:
     TunerWindow:
 
 <TunerWindow>:
     name: "Tuner"
-    canvas:
-        Color:
-            rgba: 0.11,0.15,0.22,1
-        Rectangle:
-            pos: self.pos
-            size: self.size
 
-    FloatLayout:
+    MDFloatLayout:
         BoxLayout:
             canvas:
                 Color:
-                    rgba: 0.58,0.88,0.80,1
+                    rgba: app.theme_cls.primary_color
                 Line:
                     rounded_rectangle: self.x, self.y, self.width, self.height, 10
                     width: 2
             id: tuning_canvas
-            pos_hint: {"x":0.1, "top":0.9}
-            color: 0.1,0.5,0.6,1
-            size_hint: 0.8,0.7
+            pos_hint: {"center_x":0.5, "center_y":0.5}
+            size_hint: 0.8, 0.76
 
-        Button:
-            text: "Settings"
-            bold: True
-            pos_hint: {"x":0.4, "y":0.05}
+        VerticalTuner:
+            pos_hint: {"center_x":0.5, "center_y":0.5}
+            size_hint: 0.07, 0.5
+
+        MDIconButton:
+            icon: "cog"
+            pos_hint: {"x":0.0, "y":0.0}
+            icon_size: "48sp"
             on_release: app.open_settings()
-            font_size: 30
-            color: 0.85,0.95,0.91,1
-            background_color: 0.95,0.31,0.32,1
-            size_hint: 0.2,0.1
 
-        Label:
+        MDLabel:
             text: "Polyphonic Guitar Tuner"
             bold: True
             font_size: 30
-            pos_hint: {"x":0.4, "y":0.925}
-            size_hint: 0.2, 0.05
-            color: 0.85,0.95,0.91,1
+            pos_hint: {"center_x":0.5, "center_y":0.94}
+            size_hint: 0.5, 0.05
+            halign: "center"
