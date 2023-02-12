@@ -4,10 +4,10 @@ import pyaudio
 from scipy.interpolate import interp1d
 from scipy.signal import periodogram, find_peaks
 
-import asyncio
 from enum import Enum
 from itertools import pairwise
 from math import log2
+from queue import Queue
 
 class TuningMode(Enum):
     MONOPHONIC = 1
@@ -15,7 +15,7 @@ class TuningMode(Enum):
 
 class Tuner:
 
-    def __init__(self):
+    def __init__(self, queue: Queue):
         self.CHUNK_SIZE = 1024
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
@@ -31,6 +31,9 @@ class Tuner:
         self.mode = TuningMode.MONOPHONIC
         self.buffer = np.zeros(self.CHUNK_SIZE)
         self.hanning_window = np.hanning(len(self.buffer))
+
+        self.message_queue = queue
+        self.go_flag = True
 
     def calc_cent_diff(freq1, freq2):
         return 1200.0 * log2(freq2/freq1)
@@ -51,7 +54,7 @@ class Tuner:
             high_window = self.add_cents_to_freq(base_freq, high_cents)
             self.freq_scan_windows[base_freq] = (low_window, high_window)
 
-    async def tune(self):
+    def tune(self):
         p = pyaudio.PyAudio()
 
         stream = p.open(format=self.FORMAT,
@@ -62,7 +65,11 @@ class Tuner:
 
 
         while stream.is_active():
-            binary_data = await stream.read(self.CHUNK)
+            self.check_queue()
+            if not self.go_flag:
+                break
+
+            binary_data = stream.read(self.CHUNK)
             self.add_to_buffer(binary_data)
             self.match_freqs()
 
@@ -70,7 +77,17 @@ class Tuner:
         stream.close()
         p.terminate()
 
-    async def match_freqs(self):
+    def check_queue(self):
+        while self.message_queue.qsize() > 0:
+            message = self.message_queue.get()
+            
+            match message:
+                case "end":
+                    self.go_flag = False
+                case _:
+                    print("Unrecognized message:" + message)
+
+    def match_freqs(self):
         padded_signal = np.pad(self.buffer * self.hanning_window, (0, len(self.buffer) * 3), "constant")
         (freqs, psd) = periodogram(padded_signal, self.RATE)
         
@@ -90,7 +107,7 @@ class Tuner:
 
         # TODO: match the frequencies to the relevant notes
 
-    async def add_to_buffer(self, binary_data):
+    def add_to_buffer(self, binary_data):
         data = np.frombuffer(binary_data, datatype=np.int16)
         np.append(self.buffer, data)
         self.buffer = self.buffer[self.CHUNK_SIZE:]

@@ -5,16 +5,7 @@
     circle_thickness: 4
     inner_circle_radius: self.circle_radius - self.circle_thickness
     tuner_color: (0.9, 0.9, 0.9, 1)
-    cent_difference: 0
     cent_threshold: 5
-    note_name: "A#2"
-    MDLabel:
-        text: root.note_name
-        bold: True
-        font_size: min(self.width/2, self.height/1.8)
-        pos: (root.x, root.y + root.height * 6/7)
-        size: root.width, root.height * (1/7)
-        halign: "center"
     BoxLayout:
         pos: (root.x, root.y + root.height * 1/7)
         size: root.width, root.height * (5/7)
@@ -39,14 +30,21 @@
             Color:
                 rgba: app.theme_cls.accent_color if abs(root.cent_difference) > root.cent_threshold else app.theme_cls.primary_color
             Ellipse:
-                pos: self.center_x - root.inner_circle_radius, self.center_y - root.inner_circle_radius + (self.height/2) * (root.cent_difference / 100)
+                pos: self.center_x-root.inner_circle_radius, (self.center_y-root.inner_circle_radius) + (self.height/2) * (root.cent_difference / 50)
                 size: 2*root.inner_circle_radius, 2*root.inner_circle_radius
     MDLabel:
-        text: "+" + str(root.cent_difference)
+        text: root.note_name
+        bold: True
+        font_size: min(self.width/2, self.height/1.8)
+        pos: (root.x, root.y + root.height * 6/7)
+        size: root.width, root.height * (1/7)
+        halign: "center"
+    MDLabel:
+        text: "+" + str(root.cent_difference) if root.cent_difference > 0 else str(root.cent_difference)
         bold: True
         pos: (root.x, root.y)
         size: root.width, root.height * (1/7)
-        font_size: min(self.width/2, self.height/1.8)
+        font_size: min(self.width/3, self.height/1.8)
         halign: "center"
 
 
@@ -69,14 +67,46 @@ WindowManager:
             size_hint: 0.8, 0.76
 
         VerticalTuner:
-            pos_hint: {"center_x":0.5, "center_y":0.5}
-            size_hint: 0.07, 0.7
+            pos_hint: {"center_x":0.17, "center_y":0.5}
+            size_hint: 0.09, 0.7
+            cent_difference: 5
+            note_name: "A1"
 
-        MDIconButton:
-            icon: "cog"
-            pos_hint: {"x":0.0, "y":0.0}
-            icon_size: "48sp"
-            on_release: app.open_settings()
+        VerticalTuner:
+            pos_hint: {"center_x":0.28, "center_y":0.5}
+            size_hint: 0.09, 0.7
+            cent_difference: 20
+            note_name: "E2"
+
+        VerticalTuner:
+            pos_hint: {"center_x":0.39, "center_y":0.5}
+            size_hint: 0.09, 0.7
+            cent_difference: 50
+            note_name: "A2"
+
+        VerticalTuner:
+            pos_hint: {"center_x":0.5, "center_y":0.5}
+            size_hint: 0.09, 0.7
+            cent_difference: 0
+            note_name: "D3"
+
+        VerticalTuner:
+            pos_hint: {"center_x":0.61, "center_y":0.5}
+            size_hint: 0.09, 0.7
+            cent_difference: -5
+            note_name: "G3"
+
+        VerticalTuner:
+            pos_hint: {"center_x":0.72, "center_y":0.5}
+            size_hint: 0.09, 0.7
+            cent_difference: -20
+            note_name: "B3"
+
+        VerticalTuner:
+            pos_hint: {"center_x":0.83, "center_y":0.5}
+            size_hint: 0.09, 0.7
+            cent_difference: -50
+            note_name: "E4"
 
         MDLabel:
             text: "Polyphonic Guitar Tuner"
@@ -84,4 +114,22 @@ WindowManager:
             font_size: min(self.width/12, self.height/1.8)
             pos_hint: {"center_x":0.5, "center_y":0.94}
             size_hint: 0.8, 0.08
+            halign: "center"
+
+        MDRaisedButton:
+            text: "Settings"
+            on_release: app.open_settings()
+            bold: True
+            font_size: min(self.width/6, self.height/1.2)
+            pos_hint: {"center_x":0.5, "center_y": 0.06}
+            size_hint: 0.2, 0.08
+            halign: "center"
+
+        MDRaisedButton:
+            text: "Quit"
+            on_release: app.end_tuning()
+            bold: True
+            font_size: min(self.width/6, self.height/1.2)
+            pos_hint: {"center_x":0.06, "center_y": 0.94}
+            size_hint: 0.2, 0.08
             halign: "center"
