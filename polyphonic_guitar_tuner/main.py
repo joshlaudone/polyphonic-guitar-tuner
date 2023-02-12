@@ -3,24 +3,13 @@ from tuner.Tuner import Tuner
 
 import threading
 from queue import Queue
-import time # test, delete later
 
-message_queue = Queue()
-tuner = Tuner(message_queue)
-gui = TuningGUI(message_queue)
+message_to_tuner_queue = Queue()
+message_to_gui_queue = Queue()
+tuner = Tuner(message_to_tuner_queue, message_to_gui_queue)
+gui = TuningGUI(message_to_gui_queue, message_to_tuner_queue)
 
-def run_tuner():
-    end_flag = False
-    while not end_flag:
-        print("Tuning thread is running")
-        time.sleep(1)
-        if message_queue.qsize() == 0:
-            continue
-        message = message_queue.get()
-        if message == "end":
-            end_flag = True
-
-thread = threading.Thread(target=run_tuner)
+thread = threading.Thread(target=tuner.tune)
 thread.start()
 
 gui.run()

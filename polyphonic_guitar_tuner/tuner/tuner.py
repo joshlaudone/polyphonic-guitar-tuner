@@ -9,13 +9,33 @@ from itertools import pairwise
 from math import log2
 from queue import Queue
 
+from messaging.MessagesToTuner import MessageToTuner, MessageToTunerType
+from messaging.MessagesToGUI import MessageToGUI, MessageToGUIType
+
 class TuningMode(Enum):
     MONOPHONIC = 1
     POLYPHONIC = 2
 
 class Tuner:
 
-    def __init__(self, queue: Queue):
+    LOW_E_FREQ = 82.41 # TODO calculate this from A440 or whatever is picked in the settings
+
+    @staticmethod
+    def calc_cent_diff(freq1, freq2):
+        return 1200.0 * log2(freq2/freq1)
+
+    @staticmethod
+    def add_cents_to_freq(freq, cents):
+        return freq * 2**(cents/1200)
+
+    @staticmethod
+    def calc_note_info(freq):
+        cents_above_low_e = Tuner.calc_cent_diff(Tuner.LOW_E_FREQ, freq)
+        note_number = round(cents_above_low_e/100)
+        cent_diff = cents_above_low_e - (note_number*100)
+        return (note_number, cent_diff)
+
+    def __init__(self, inbound_queue: Queue, outbound_queue: Queue):
         self.CHUNK_SIZE = 1024
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
@@ -24,29 +44,25 @@ class Tuner:
         self.ZERO_PADS = 3
         self.HPS_PARTIALS = 3
         self.THRESHOLD = 10**-6
+        self.MONOPHONIC_THRESHOLD = 10**-4
 
         self.in_tune_freqs = []
         self.matched_freqs = []
         self.freq_scan_windows = {}
         self.mode = TuningMode.MONOPHONIC
-        self.buffer = np.zeros(self.CHUNK_SIZE)
+        self.buffer = np.zeros(self.CHUNK_SIZE * self.BUFFER_CHUNKS)
         self.hanning_window = np.hanning(len(self.buffer))
 
-        self.message_queue = queue
+        self.inbound_queue = inbound_queue
+        self.outbound_queue = outbound_queue
         self.go_flag = True
-
-    def calc_cent_diff(freq1, freq2):
-        return 1200.0 * log2(freq2/freq1)
-
-    def add_cents_to_freq(freq, cents):
-        return freq * 2**(cents/1200)
 
     def set_freqs(self, input_freqs):
         self.in_tune_freqs = input_freqs
 
         cent_diffs = []
         for low_freq, high_freq in pairwise(input_freqs):
-            cent_diffs.append(self.calc_cent_diff(low_freq, high_freq))
+            cent_diffs.append(Tuner.calc_cent_diff(low_freq, high_freq))
         cent_diffs = cent_diffs[0] + cent_diffs + cent_diffs[-1]
 
         for base_freq, (low_cents, high_cents) in zip(input_freqs, pairwise(cent_diffs)):
@@ -61,7 +77,7 @@ class Tuner:
                         channels=self.CHANNELS,
                         rate=self.RATE,
                         input=True,
-                        frames_per_buffer=self.CHUNK)
+                        frames_per_buffer=self.CHUNK_SIZE)
 
 
         while stream.is_active():
@@ -69,20 +85,21 @@ class Tuner:
             if not self.go_flag:
                 break
 
-            binary_data = stream.read(self.CHUNK)
+            binary_data = stream.read(self.CHUNK_SIZE)
             self.add_to_buffer(binary_data)
             self.match_freqs()
+            self.send_note_info()
 
         stream.stop_stream()
         stream.close()
         p.terminate()
 
     def check_queue(self):
-        while self.message_queue.qsize() > 0:
-            message = self.message_queue.get()
+        while self.inbound_queue.qsize() > 0:
+            message = self.inbound_queue.get()
             
-            match message:
-                case "end":
+            match message.message_type:
+                case MessageToTunerType.QUIT:
                     self.go_flag = False
                 case _:
                     print("Unrecognized message:" + message)
@@ -99,15 +116,30 @@ class Tuner:
             spectra.append(s) 
 
         hps = np.product(np.abs(spectra), axis=0)
+        hps = hps/hps.max()
         freqs_hps = np.linspace(0, freqs[-1]/self.HPS_PARTIALS, len(freqs))
-        
-        peak_locs = find_peaks(hps, threshold=self.THRESHOLD)
-        peak_freqs = freqs_hps[peak_locs[0]]
-        peak_vals = hps[peak_locs[0]]
 
-        # TODO: match the frequencies to the relevant notes
+        if self.mode == TuningMode.MONOPHONIC:
+            peak_locs = find_peaks(hps, threshold=self.MONOPHONIC_THRESHOLD, distance=50)
+            peak_freqs = freqs_hps[peak_locs[0]]
+            if len(peak_freqs) > 0:
+                self.matched_freqs = [peak_freqs[0]]
+            else:
+                self.matched_freqs = []
+        else:
+            peak_locs = find_peaks(hps, threshold=self.THRESHOLD)
+            peak_freqs = freqs_hps[peak_locs[0]]
+            peak_vals = hps[peak_locs[0]]
+            # TODO finish matching freqs
 
     def add_to_buffer(self, binary_data):
-        data = np.frombuffer(binary_data, datatype=np.int16)
-        np.append(self.buffer, data)
+        data = np.frombuffer(binary_data, dtype=np.int16)
+        self.buffer = np.append(self.buffer, data)
         self.buffer = self.buffer[self.CHUNK_SIZE:]
+
+    def send_note_info(self):
+        message_data = []
+        for freq in self.matched_freqs:
+            message_data.append(Tuner.calc_note_info(freq))
+        message = MessageToGUI(MessageToGUIType.NOTE_DIFFS, message_data)
+        self.outbound_queue.put(message)

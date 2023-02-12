@@ -1,7 +1,7 @@
 from kivymd.app import MDApp
 from kivymd.uix.widget import MDWidget
 from kivy.core.window import Window
-from kivy.config import ConfigParser
+from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.properties import NumericProperty, BoundedNumericProperty, ColorProperty, StringProperty
 from kivy.uix.screenmanager import ScreenManager, Screen
@@ -11,6 +11,8 @@ import os.path
 from queue import Queue
 
 import settings_io.SettingsJson as SettingsJson
+from messaging.MessagesToTuner import MessageToTuner, MessageToTunerType
+from messaging.MessagesToGUI import MessageToGUI, MessageToGUIType
 
 class VerticalTuner(MDWidget):
     circle_radius = NumericProperty(20)
@@ -31,9 +33,15 @@ class WindowManager(ScreenManager):
 kv_file = os.path.join("ui", "TuningGUI.kv")
 
 class TuningGUI(MDApp):
-    def __init__(self, queue, **kwargs):
+    def __init__(self, inbound_queue: Queue, outbound_queue: Queue, **kwargs):
         super().__init__(**kwargs)
-        self.message_queue = queue
+
+        self.outbound_queue = outbound_queue
+        self.inbound_queue = inbound_queue
+        self.note_diffs = []
+        self.cent_diffs = []
+
+        Clock.schedule_interval(self.update_tuners, 0.05)
         Window.bind(on_request_close=self.close_app)
     
     def build(self):
@@ -62,7 +70,22 @@ class TuningGUI(MDApp):
     def on_config_change(self, config, section, key, value):
         print(section, key, value)
 
+    def update_tuners(self, dt):
+        self.check_queue()
+#        self.set_cent_diffs()
+
+    def check_queue(self):
+        while self.inbound_queue.qsize() > 0:
+            message = self.inbound_queue.get()
+            match message.message_type:
+                case MessageToGUIType.NOTE_DIFFS:
+                    self.note_diffs = message.data
+                case _:
+                    print("Invalid Message")
+        print(self.note_diffs)
+
     def close_app(self, instance):
-        self.message_queue.put("end")
+        quit_message = MessageToTuner(MessageToTunerType.QUIT)
+        self.outbound_queue.put(quit_message)
         self.stop()
         Window.close()
