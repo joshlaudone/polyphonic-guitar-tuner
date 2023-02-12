@@ -28,7 +28,7 @@ class TunerWindow(Screen):
 class WindowManager(ScreenManager):
     pass
 
-kv_file = os.path.join("ui", "Tuner.kv")
+kv_file = os.path.join("ui", "TuningGUI.kv")
 
 class TuningGUI(MDApp):
     def __init__(self, queue, **kwargs):

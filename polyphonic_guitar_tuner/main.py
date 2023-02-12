@@ -1,9 +1,9 @@
 from ui.TuningGUI import TuningGUI
-from tuner.tuner import Tuner
+from tuner.Tuner import Tuner
 
 import threading
 from queue import Queue
-import time # debug, delete later
+import time # test, delete later
 
 message_queue = Queue()
 tuner = Tuner(message_queue)
@@ -15,7 +15,6 @@ def run_tuner():
         print("Tuning thread is running")
         time.sleep(1)
         if message_queue.qsize() == 0:
-            print("Queue is empty")
             continue
         message = message_queue.get()
         if message == "end":

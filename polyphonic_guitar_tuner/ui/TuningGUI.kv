@@ -1,4 +1,4 @@
-# Filename: my.kv
+# Filename: TuningGUI.kv
 
 <VerticalTuner>:
     circle_radius: self.width/2 if self.width/2 < self.height/16 else self.height/16
@@ -122,14 +122,5 @@ WindowManager:
             bold: True
             font_size: min(self.width/6, self.height/1.2)
             pos_hint: {"center_x":0.5, "center_y": 0.06}
-            size_hint: 0.2, 0.08
-            halign: "center"
-
-        MDRaisedButton:
-            text: "Quit"
-            on_release: app.end_tuning()
-            bold: True
-            font_size: min(self.width/6, self.height/1.2)
-            pos_hint: {"center_x":0.06, "center_y": 0.94}
             size_hint: 0.2, 0.08
             halign: "center"
