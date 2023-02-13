@@ -7,6 +7,7 @@ from kivy.properties import NumericProperty, BoundedNumericProperty, ColorProper
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.settings import SettingsWithSidebar
 
+from math import floor
 import os.path
 from queue import Queue
 
@@ -33,13 +34,17 @@ class WindowManager(ScreenManager):
 kv_file = os.path.join("ui", "TuningGUI.kv")
 
 class TuningGUI(MDApp):
+
     def __init__(self, inbound_queue: Queue, outbound_queue: Queue, **kwargs):
         super().__init__(**kwargs)
 
         self.outbound_queue = outbound_queue
         self.inbound_queue = inbound_queue
+
+        self.use_flats = False 
         self.note_diffs = []
-        self.cent_diffs = []
+        self.sharp_notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        self.flat_notes  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 
         Clock.schedule_interval(self.update_tuners, 0.05)
         Window.bind(on_request_close=self.close_app)
@@ -80,9 +85,27 @@ class TuningGUI(MDApp):
             match message.message_type:
                 case MessageToGUIType.NOTE_DIFFS:
                     self.note_diffs = message.data
+                    self.update_notes()
                 case _:
                     print("Invalid Message")
-        print(self.note_diffs)
+        #print(self.note_diffs)
+
+    def update_notes(self):
+        if len(self.note_diffs) == 0:
+           return 
+        note_diff = self.note_diffs[0]
+        self.root.current_screen.ids["middleTuner"].cent_difference = round(note_diff[1], 1)
+        self.root.current_screen.ids["middleTuner"].note_name = self.calc_note_name(note_diff[0])
+        print(note_diff[0])
+        
+    def calc_note_name(self, note_number: int):
+        # notes are relative to middle C
+        octave_number = floor(note_number/12) + 4
+        if self.use_flats:
+            note_name = self.flat_notes[note_number%12]
+        else:
+            note_name = self.sharp_notes[note_number%12]
+        return note_name + str(octave_number)
 
     def close_app(self, instance):
         quit_message = MessageToTuner(MessageToTunerType.QUIT)

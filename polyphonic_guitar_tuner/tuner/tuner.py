@@ -18,7 +18,6 @@ class TuningMode(Enum):
 
 class Tuner:
 
-    LOW_E_FREQ = 82.41 # TODO calculate this from A440 or whatever is picked in the settings
 
     @staticmethod
     def calc_cent_diff(freq1, freq2):
@@ -27,13 +26,6 @@ class Tuner:
     @staticmethod
     def add_cents_to_freq(freq, cents):
         return freq * 2**(cents/1200)
-
-    @staticmethod
-    def calc_note_info(freq):
-        cents_above_low_e = Tuner.calc_cent_diff(Tuner.LOW_E_FREQ, freq)
-        note_number = round(cents_above_low_e/100)
-        cent_diff = cents_above_low_e - (note_number*100)
-        return (note_number, cent_diff)
 
     def __init__(self, inbound_queue: Queue, outbound_queue: Queue):
         self.CHUNK_SIZE = 1024
@@ -52,6 +44,7 @@ class Tuner:
         self.mode = TuningMode.MONOPHONIC
         self.buffer = np.zeros(self.CHUNK_SIZE * self.BUFFER_CHUNKS)
         self.hanning_window = np.hanning(len(self.buffer))
+        self.middle_c_freq = 261.625565 # TODO calculate this from A440 or whatever is picked in the settings
 
         self.inbound_queue = inbound_queue
         self.outbound_queue = outbound_queue
@@ -140,6 +133,12 @@ class Tuner:
     def send_note_info(self):
         message_data = []
         for freq in self.matched_freqs:
-            message_data.append(Tuner.calc_note_info(freq))
+            message_data.append(self.calc_note_info(freq))
         message = MessageToGUI(MessageToGUIType.NOTE_DIFFS, message_data)
         self.outbound_queue.put(message)
+
+    def calc_note_info(self, freq):
+        cents_above_middle_c = self.calc_cent_diff(self.middle_c_freq, freq)
+        note_number = round(cents_above_middle_c/100)
+        cent_diff = cents_above_middle_c - (note_number*100)
+        return (note_number, cent_diff)
