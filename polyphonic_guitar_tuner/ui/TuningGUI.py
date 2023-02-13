@@ -55,7 +55,19 @@ class TuningGUI(MDApp):
         self.theme_cls.accent_palette = "Red"
         self.use_kivy_settings = False
         self.settings_cls = SettingsWithSidebar
-        return Builder.load_file(kv_file)
+
+        built_file = Builder.load_file(kv_file)
+
+        self.tunerScreen = built_file.get_screen("Tuner")
+
+        self.monoTuner = VerticalTuner()
+        self.monoTuner.pos_hint = {"center_x":0.5, "center_y":0.5}
+        self.monoTuner.size_hint = 0.09, 0.7
+        self.monoTuner.cent_difference = 0
+        self.monoTuner.note_name = ""
+        self.tunerScreen.add_widget(self.monoTuner)
+        
+        return built_file
 
     def build_config(self, config):
         config.setdefaults('Tuning Settings', {
@@ -94,9 +106,8 @@ class TuningGUI(MDApp):
         if len(self.note_diffs) == 0:
            return 
         note_diff = self.note_diffs[0]
-        self.root.current_screen.ids["middleTuner"].cent_difference = round(note_diff[1], 1)
-        self.root.current_screen.ids["middleTuner"].note_name = self.calc_note_name(note_diff[0])
-        print(note_diff[0])
+        self.monoTuner.cent_difference = round(note_diff[1], 1)
+        self.monoTuner.note_name = self.calc_note_name(note_diff[0])
         
     def calc_note_name(self, note_number: int):
         # notes are relative to middle C

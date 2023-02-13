@@ -53,6 +53,7 @@ WindowManager:
 
 <TunerWindow>:
     name: "Tuner"
+    id: "TunerWindow"
 
     MDFloatLayout:
         BoxLayout:
@@ -62,7 +63,6 @@ WindowManager:
                 Line:
                     rounded_rectangle: self.x, self.y, self.width, self.height, 10
                     width: 2
-            id: tuning_canvas
             pos_hint: {"center_x":0.5, "center_y":0.5}
             size_hint: 0.8, 0.76
 
@@ -84,12 +84,10 @@ WindowManager:
             cent_difference: 50
             note_name: "A2"
 
-        VerticalTuner:
-            id: middleTuner
-            pos_hint: {"center_x":0.5, "center_y":0.5}
-            size_hint: 0.09, 0.7
-            cent_difference: 0
-            note_name: ""
+#        VerticalTuner:
+#            id: middleTuner
+#            pos_hint: {"center_x":0.5, "center_y":0.5}
+#            size_hint: 0.09, 0.7
 
         VerticalTuner:
             pos_hint: {"center_x":0.61, "center_y":0.5}
