@@ -1,20 +1,20 @@
 [
     {
         "type": "title",
-        "title": "Tuning Settings"
+        "title": "Tuner"
     },
     {
         "type": "numeric",
         "title": "Number of Strings",
         "desc": "Number of Strings",
-        "section": "Tuning Settings",
+        "section": "Tuner",
         "key": "num_strings"
     },
     {
         "type": "options",
         "title": "Tuning",
         "desc": "Choose a preset tuning",
-        "section": "Tuning Settings",
+        "section": "Tuner",
         "key": "tuning",
         "options": [
             "Standard",
@@ -25,7 +25,7 @@
         "type": "options",
         "title": "Root Note",
         "desc": "Note of your lowest string",
-        "section": "Tuning Settings",
+        "section": "Tuner",
         "key": "root_note",
         "options": [
             "A",
@@ -46,7 +46,7 @@
         "type": "options",
         "title": "Root Note Octave",
         "desc": "Octave of your lowest string",
-        "section": "Tuning Settings",
+        "section": "Tuner",
         "key": "root_note_octave",
         "options": [
             "0",
@@ -58,7 +58,7 @@
         "type": "numeric",
         "title": "Pitch Standard",
         "desc": "Frequency of A4 in hz",
-        "section": "Tuning Settings",
+        "section": "Tuner",
         "key": "pitch_standard"
     }
 ]

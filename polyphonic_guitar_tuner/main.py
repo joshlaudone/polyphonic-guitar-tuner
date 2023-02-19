@@ -13,5 +13,3 @@ thread = threading.Thread(target=tuner.tune)
 thread.start()
 
 gui.run()
-
-print("test")

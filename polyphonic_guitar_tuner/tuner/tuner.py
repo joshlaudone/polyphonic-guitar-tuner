@@ -6,7 +6,6 @@ from scipy.signal import periodogram, find_peaks
 
 from enum import Enum
 from itertools import pairwise
-from math import log2
 from queue import Queue
 
 from messaging.MessagesToTuner import MessageToTuner, MessageToTunerType
@@ -21,7 +20,7 @@ class Tuner:
 
     @staticmethod
     def calc_cent_diff(freq1, freq2):
-        return 1200.0 * log2(freq2/freq1)
+        return 1200.0 * np.log2(freq2/freq1)
 
     @staticmethod
     def add_cents_to_freq(freq, cents):
@@ -35,8 +34,7 @@ class Tuner:
         self.BUFFER_CHUNKS = 50
         self.ZERO_PADS = 3
         self.HPS_PARTIALS = 3
-        self.THRESHOLD = 10**-6
-        self.MONOPHONIC_THRESHOLD = 10**-4
+        self.HPS_THRESHOLD = 10**-4
 
         self.in_tune_freqs = []
         self.matched_freqs = []
@@ -72,7 +70,6 @@ class Tuner:
                         input=True,
                         frames_per_buffer=self.CHUNK_SIZE)
 
-
         while stream.is_active():
             self.check_queue()
             if not self.go_flag:
@@ -94,6 +91,8 @@ class Tuner:
             match message.message_type:
                 case MessageToTunerType.QUIT:
                     self.go_flag = False
+                case MessageToTunerType.SET_NOTES:
+                    self.set_freqs(message.data)
                 case _:
                     print("Unrecognized message:" + message)
 
@@ -112,18 +111,32 @@ class Tuner:
         hps = hps/hps.max()
         freqs_hps = np.linspace(0, freqs[-1]/self.HPS_PARTIALS, len(freqs))
 
+        self.matched_freqs = []
+
         if self.mode == TuningMode.MONOPHONIC:
-            peak_locs = find_peaks(hps, threshold=self.MONOPHONIC_THRESHOLD, distance=50)
+            peak_locs = find_peaks(hps, threshold=self.HPS_THRESHOLD, distance=50)
             peak_freqs = freqs_hps[peak_locs[0]]
             if len(peak_freqs) > 0:
                 self.matched_freqs = [peak_freqs[0]]
-            else:
-                self.matched_freqs = []
-        else:
-            peak_locs = find_peaks(hps, threshold=self.THRESHOLD)
+
+        else: # TuningMode.POLYPHONIC
+            peak_locs = find_peaks(hps, threshold=self.HPS_THRESHOLD, distance=5)
             peak_freqs = freqs_hps[peak_locs[0]]
             peak_vals = hps[peak_locs[0]]
-            # TODO finish matching freqs
+
+            for idx, base_freq in enumerate(self.in_tune_freqs):
+                current_window  = self.freq_scan_windows[base_freq]
+                candidate_locs  = np.where((peak_freqs > current_window[0]) & (peak_freqs < current_window[1]))
+                candidate_freqs = peak_freqs[candidate_locs]
+                candidate_vals  = peak_vals[candidate_locs]
+
+                # evaluate each candidate based on a heuristic
+                # only takes into account closeness to desired freq and relative power for now
+                # could add something that looks at whether it's likely to be a harmonic of a lower note
+                candidate_cent_diff = np.abs(Tuner.calc_cent_diff(base_freq, candidate_freqs))
+                decay_rate = 0.01
+                hps_heuristic = candidate_vals * decay_rate**(candidate_cent_diff/100)
+                self.matched_freqs[idx] = candidate_freqs.index(np.max(hps_heuristic))
 
     def add_to_buffer(self, binary_data):
         data = np.frombuffer(binary_data, dtype=np.int16)

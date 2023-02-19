@@ -6,6 +6,7 @@ from kivy.lang import Builder
 from kivy.properties import NumericProperty, BoundedNumericProperty, ColorProperty, StringProperty
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.settings import SettingsWithSidebar
+from numpy import linspace
 
 from math import floor
 import os.path
@@ -46,7 +47,7 @@ class TuningGUI(MDApp):
         self.sharp_notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         self.flat_notes  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 
-        Clock.schedule_interval(self.update_tuners, 0.05)
+        Clock.schedule_interval(self.check_queue, 0.05)
         Window.bind(on_request_close=self.close_app)
     
     def build(self):
@@ -57,20 +58,31 @@ class TuningGUI(MDApp):
         self.settings_cls = SettingsWithSidebar
 
         built_file = Builder.load_file(kv_file)
-
+        self.tuners = []
         self.tunerScreen = built_file.get_screen("Tuner")
+        self.build_tuner_screen()
 
-        self.monoTuner = VerticalTuner()
-        self.monoTuner.pos_hint = {"center_x":0.5, "center_y":0.5}
-        self.monoTuner.size_hint = 0.09, 0.7
-        self.monoTuner.cent_difference = 0
-        self.monoTuner.note_name = ""
-        self.tunerScreen.add_widget(self.monoTuner)
-        
         return built_file
 
+    def build_tuner_screen(self):
+        num_strings = int(self.config.get("Tuner", "num_strings"))
+
+        for tuner in self.tuners:
+            self.tunerScreen.remove_widget(tuner)
+        self.tuners = []
+
+        tuner_pos_x = linspace(0.15,0.85,num=num_strings)
+
+        for string_num in range(num_strings):
+            self.tuners.append(VerticalTuner())
+            self.tuners[string_num].pos_hint = {"center_x":float(tuner_pos_x[string_num]), "center_y":0.5}
+            self.tuners[string_num].size_hint = 0.09, 0.7
+            self.tuners[string_num].cent_difference = 0
+            self.tuners[string_num].note_name = ""
+            self.tunerScreen.add_widget(self.tuners[string_num])
+
     def build_config(self, config):
-        config.setdefaults('Tuning Settings', {
+        config.setdefaults('Tuner', {
             'num_strings': 6,
             'tuning': 'Standard',
             'root_note': 'E',
@@ -80,18 +92,32 @@ class TuningGUI(MDApp):
         config.read(config_file)
 
     def build_settings(self, settings):
-        settings.add_json_panel('Tuning Settings',
+        settings.add_json_panel('Tuner',
                                 self.config,
                                 data=SettingsJson.get_settings())
 
     def on_config_change(self, config, section, key, value):
         print(section, key, value)
 
-    def update_tuners(self, dt):
-        self.check_queue()
-#        self.set_cent_diffs()
+        match section:
+            case "Tuner":
+                self.update_tuner_settings(key, value)
+            case _:
+                print("no section match found")
 
-    def check_queue(self):
+    def update_tuner_settings(self, key, value):
+        match key:
+            case "num_strings":
+                # send update to tuner
+                self.build_tuner_screen()
+            case _:
+                print("no key match found")
+
+    def set_tuner_notes(self):
+        a4 = int(self.config.get("Tuner", "pitch_standard"))
+#        message = MessageToTuner(MessageToTunerType.SET_NOTES, notes=notes, a4=a4)
+
+    def check_queue(self, dt):
         while self.inbound_queue.qsize() > 0:
             message = self.inbound_queue.get()
             match message.message_type:
@@ -100,14 +126,13 @@ class TuningGUI(MDApp):
                     self.update_notes()
                 case _:
                     print("Invalid Message")
-        #print(self.note_diffs)
 
     def update_notes(self):
         if len(self.note_diffs) == 0:
            return 
         note_diff = self.note_diffs[0]
-        self.monoTuner.cent_difference = round(note_diff[1], 1)
-        self.monoTuner.note_name = self.calc_note_name(note_diff[0])
+        self.tuners[0].cent_difference = round(note_diff[1], 1)
+        self.tuners[0].note_name = self.calc_note_name(note_diff[0])
         
     def calc_note_name(self, note_number: int):
         # notes are relative to middle C
