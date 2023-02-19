@@ -4,6 +4,7 @@ import pyaudio
 from scipy.interpolate import interp1d
 from scipy.signal import periodogram, find_peaks
 
+import time
 from enum import Enum
 from itertools import pairwise
 from queue import Queue
@@ -38,28 +39,33 @@ class Tuner:
 
         self.in_tune_freqs = []
         self.matched_freqs = []
-        self.freq_scan_windows = {}
-        self.mode = TuningMode.MONOPHONIC
+        self.freq_scan_windows = []
+        self.middle_c_freq = 261.625565
+        self.mode = TuningMode.POLYPHONIC
         self.buffer = np.zeros(self.CHUNK_SIZE * self.BUFFER_CHUNKS)
         self.hanning_window = np.hanning(len(self.buffer))
-        self.middle_c_freq = 261.625565 # TODO calculate this from A440 or whatever is picked in the settings
 
         self.inbound_queue = inbound_queue
         self.outbound_queue = outbound_queue
-        self.go_flag = True
 
-    def set_freqs(self, input_freqs):
-        self.in_tune_freqs = input_freqs
+        self.quit_flag = False
+        self.pause_flag = True
+
+    def set_freqs(self, input_notes):
+        self.in_tune_freqs = []
+        self.freq_scan_windows = []
+        for note_number in input_notes:
+            self.in_tune_freqs.append(Tuner.add_cents_to_freq(self.middle_c_freq, note_number*100))
 
         cent_diffs = []
-        for low_freq, high_freq in pairwise(input_freqs):
-            cent_diffs.append(Tuner.calc_cent_diff(low_freq, high_freq))
-        cent_diffs = cent_diffs[0] + cent_diffs + cent_diffs[-1]
+        for low_freq, high_freq in pairwise(self.in_tune_freqs):
+            cent_diffs.append(Tuner.calc_cent_diff(low_freq, high_freq) / 2)
+        cent_diffs = [cent_diffs[0]] + cent_diffs + [cent_diffs[-1]]
 
-        for base_freq, (low_cents, high_cents) in zip(input_freqs, pairwise(cent_diffs)):
-            low_window = self.add_cents_to_freq(base_freq, low_cents)
+        for base_freq, (low_cents, high_cents) in zip(self.in_tune_freqs, pairwise(cent_diffs)):
+            low_window = self.add_cents_to_freq(base_freq, -1 * low_cents)
             high_window = self.add_cents_to_freq(base_freq, high_cents)
-            self.freq_scan_windows[base_freq] = (low_window, high_window)
+            self.freq_scan_windows.append((low_window, high_window))
 
     def tune(self):
         p = pyaudio.PyAudio()
@@ -72,8 +78,12 @@ class Tuner:
 
         while stream.is_active():
             self.check_queue()
-            if not self.go_flag:
+            if self.quit_flag:
                 break
+
+            if self.pause_flag:
+                time.sleep(0.1)
+                continue
 
             binary_data = stream.read(self.CHUNK_SIZE)
             self.add_to_buffer(binary_data)
@@ -89,10 +99,16 @@ class Tuner:
             message = self.inbound_queue.get()
             
             match message.message_type:
+                case MessageToTunerType.PAUSE:
+                    self.pause_flag = True
+                case MessageToTunerType.RESUME:
+                    self.pause_flag = False
                 case MessageToTunerType.QUIT:
-                    self.go_flag = False
+                    self.quit_flag = True
                 case MessageToTunerType.SET_NOTES:
-                    self.set_freqs(message.data)
+                    # Middle C is 9 semitones/900 cents below A4
+                    self.middle_c_freq = Tuner.add_cents_to_freq(message.a4, -900)
+                    self.set_freqs(message.notes)
                 case _:
                     print("Unrecognized message:" + message)
 
@@ -111,8 +127,6 @@ class Tuner:
         hps = hps/hps.max()
         freqs_hps = np.linspace(0, freqs[-1]/self.HPS_PARTIALS, len(freqs))
 
-        self.matched_freqs = []
-
         if self.mode == TuningMode.MONOPHONIC:
             peak_locs = find_peaks(hps, threshold=self.HPS_THRESHOLD, distance=50)
             peak_freqs = freqs_hps[peak_locs[0]]
@@ -124,8 +138,10 @@ class Tuner:
             peak_freqs = freqs_hps[peak_locs[0]]
             peak_vals = hps[peak_locs[0]]
 
+            self.matched_freqs = np.zeros(len(self.in_tune_freqs))
+
             for idx, base_freq in enumerate(self.in_tune_freqs):
-                current_window  = self.freq_scan_windows[base_freq]
+                current_window  = self.freq_scan_windows[idx]
                 candidate_locs  = np.where((peak_freqs > current_window[0]) & (peak_freqs < current_window[1]))
                 candidate_freqs = peak_freqs[candidate_locs]
                 candidate_vals  = peak_vals[candidate_locs]
@@ -136,7 +152,11 @@ class Tuner:
                 candidate_cent_diff = np.abs(Tuner.calc_cent_diff(base_freq, candidate_freqs))
                 decay_rate = 0.01
                 hps_heuristic = candidate_vals * decay_rate**(candidate_cent_diff/100)
-                self.matched_freqs[idx] = candidate_freqs.index(np.max(hps_heuristic))
+
+                if len(hps_heuristic) > 0:
+                    self.matched_freqs[idx] = candidate_freqs[np.argmax(hps_heuristic)]
+                else:
+                    self.matched_freqs[idx] = base_freq
 
     def add_to_buffer(self, binary_data):
         data = np.frombuffer(binary_data, dtype=np.int16)

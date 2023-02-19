@@ -60,7 +60,9 @@ class TuningGUI(MDApp):
         built_file = Builder.load_file(kv_file)
         self.tuners = []
         self.tunerScreen = built_file.get_screen("Tuner")
+        self.set_tuner_notes()
         self.build_tuner_screen()
+        self.resume_tuning()
 
         return built_file
 
@@ -83,7 +85,7 @@ class TuningGUI(MDApp):
 
     def build_config(self, config):
         config.setdefaults('Tuner', {
-            'num_strings': 6,
+            'num_strings': '6',
             'tuning': 'Standard',
             'root_note': 'E',
             'root_note_octave': '2',
@@ -96,6 +98,10 @@ class TuningGUI(MDApp):
                                 self.config,
                                 data=SettingsJson.get_settings())
 
+    def resume_tuning(self):
+        message = MessageToTuner(MessageToTunerType.RESUME)
+        self.outbound_queue.put(message)
+
     def on_config_change(self, config, section, key, value):
         print(section, key, value)
 
@@ -107,15 +113,41 @@ class TuningGUI(MDApp):
 
     def update_tuner_settings(self, key, value):
         match key:
-            case "num_strings":
-                # send update to tuner
+            case "num_strings" | "tuning" | "root_note" | "root_note_octave" | "pitch_standard":
+                self.set_tuner_notes()
                 self.build_tuner_screen()
             case _:
                 print("no key match found")
 
     def set_tuner_notes(self):
         a4 = int(self.config.get("Tuner", "pitch_standard"))
-#        message = MessageToTuner(MessageToTunerType.SET_NOTES, notes=notes, a4=a4)
+        root_note = self.config.get("Tuner", "root_note")
+        root_note_octave = int(self.config.get("Tuner", "root_note_octave"))
+        tuning = self.config.get("Tuner", "tuning")
+        num_strings = int(self.config.get("Tuner", "num_strings"))
+
+        root_note_number = self.calc_note_number(root_note, root_note_octave)
+        notes = [root_note_number]
+        match tuning:
+            case "Standard":
+                # All fourths except for second to last string, which is a major third
+                for string_num in range(1,num_strings):
+                    if string_num != num_strings - 2:
+                        notes.append(notes[-1] + 5)
+                    else:
+                        notes.append(notes[-1] + 4)
+            case "Drop":
+                # A fifth, then all fourths except for second to last string, which is a major third
+                notes.append(notes[-1] + 7)
+                for string_num in range(2,num_strings):
+                    if string_num != num_strings - 2:
+                        notes.append(notes[-1] + 5)
+                    else:
+                        notes.append(notes[-1] + 4)
+            case _:
+                print("unrecognized tuning type")
+        message = MessageToTuner(MessageToTunerType.SET_NOTES, notes=notes, a4=a4)
+        self.outbound_queue.put(message)
 
     def check_queue(self, dt):
         while self.inbound_queue.qsize() > 0:
@@ -128,11 +160,9 @@ class TuningGUI(MDApp):
                     print("Invalid Message")
 
     def update_notes(self):
-        if len(self.note_diffs) == 0:
-           return 
-        note_diff = self.note_diffs[0]
-        self.tuners[0].cent_difference = round(note_diff[1], 1)
-        self.tuners[0].note_name = self.calc_note_name(note_diff[0])
+        for idx, note_diff in enumerate(self.note_diffs):
+            self.tuners[idx].cent_difference = round(note_diff[1], 1)
+            self.tuners[idx].note_name = self.calc_note_name(note_diff[0])
         
     def calc_note_name(self, note_number: int):
         # notes are relative to middle C
@@ -142,6 +172,11 @@ class TuningGUI(MDApp):
         else:
             note_name = self.sharp_notes[note_number%12]
         return note_name + str(octave_number)
+
+    def calc_note_number(self, note_name: str, octave_number: int):
+        # always use sharps for now because that's what the settings are hardcoded to use
+        note_index = self.sharp_notes.index(note_name)
+        return note_index + (octave_number-4)*12
 
     def close_app(self, instance):
         quit_message = MessageToTuner(MessageToTunerType.QUIT)
